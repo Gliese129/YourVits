@@ -1,6 +1,7 @@
-from torch import nn
+from torch import nn, Tensor
 import torch
 import math
+
 
 class PositionEmbedding(nn.Module):
 	"""
