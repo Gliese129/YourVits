@@ -29,4 +29,4 @@ class PositionEmbedding(nn.Module):
 		self.register_buffer('pe', pe)
 
 	def forward(self, x: Tensor) -> Tensor:
-		return self.pe[:, :x.size(1)]
+		return self.pe[:x.size(1), :x.size(2)].unsqueeze(0)

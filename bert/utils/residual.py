@@ -10,8 +10,8 @@ class Residual(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.sublayer = sublayer
 
-    def forward(self, x):
+    def forward(self, x, *args, **kwargs):
         x_ = self.norm(x)
-        x_ = self.sublayer(x_)
+        x_ = self.sublayer(x_, *args, **kwargs)
         x_ = self.dropout(x_)
         return x + x_

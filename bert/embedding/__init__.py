@@ -27,11 +27,13 @@ class BertEmbedding(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.embed_size = embed_size
 
-    def forward(self, sequence: list, label: list) -> Tensor:
-        x = torch.sum(
-            self.token(sequence),
-            self.position(sequence),
-            self.segment(label)
-        )
+    def forward(self, sequence: list, label: list, ctx=None) -> Tensor:
+        assert len(sequence) <= 512, 'Sequence too long'
+        x = self.token(sequence)
+        if ctx is not None:
+            # (batch, context_len, h)
+            c_len = ctx.shape[1]
+            x[:, 2:c_len + 2] = ctx
+        x += self.position(x) + self.segment(label)
         x = self.dropout(x)
         return x
