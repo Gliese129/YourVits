@@ -16,7 +16,7 @@ class PCALayer(nn.Module):
         b, s, h = x.shape
         dtype, device = x.dtype, x.device
         x = x.transpose(1, 2).reshape(b * h, -1)
-        x = self.pca.fit_transform(x)
+        x = self.pca.fit_transform(x.detach().cpu().numpy())
         x = torch.tensor(x, dtype=dtype, device=device)
         x = x.reshape(b, h, -1).transpose(1, 2)
 
@@ -28,7 +28,7 @@ class PCALayer(nn.Module):
         # 将梯度reshape成2D tensor
         grad_output = grad_output.transpose(1, 2).reshape(b * s, -1)
         # 调用sklearn的PCA的inverse_transform方法
-        grad_output = self.pca.inverse_transform(grad_output)
+        grad_output = self.pca.inverse_transform(grad_output.detach().cpu().numpy())
         # 将梯度reshape回3D tensor
         grad_output = torch.tensor(grad_output, dtype=dtype, device=device).reshape(b, s, h)
         grad_output = grad_output.transpose(1, 2)

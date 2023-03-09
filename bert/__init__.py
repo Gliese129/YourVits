@@ -45,9 +45,9 @@ class Bert(nn.Module):
     Bidirectional Encoder:
         Multi-Head Attention -> Add&Norm -> Feed Forward -> Add&Norm
     """
-    CONTEXT_LEN = 8
 
-    def __init__(self, vocab_size, seq_len=512, d_model=768, n_layers=4, attn_heads=12, dropout=0.1):
+    def __init__(self, vocab_size, seq_len=512, d_model=768, ctx_len=16,
+                 n_layers=4, attn_heads=12, dropout=0.1):
         """
 
         :param vocab_size: vocab size of total words
@@ -60,9 +60,11 @@ class Bert(nn.Module):
         self.d_model = d_model
         self.n_layers = n_layers
         self.attn_heads = attn_heads
+        self.ctx_len = ctx_len
 
         self.embedding = BertEmbedding(vocab_size, d_model, dropout)
-        self.pca = PCALayer(input_size=seq_len, output_size=self.CONTEXT_LEN)
+        self.pca = PCALayer(input_size=seq_len, output_size=ctx_len)
+        self.linear = nn.Linear(d_model, vocab_size)
 
         self.bert_blocks = nn.ModuleList([
             BertBlock(d_model, attn_heads, d_model * 4, dropout)
@@ -75,20 +77,24 @@ class Bert(nn.Module):
         mask = (x > 0).unsqueeze(1).repeat(1, x.size(1), 1).unsqueeze(1)
 
         if context is None:
-            context = torch.zeros_like(x)
-
-        ctx = self.pca(context)
+            context = torch.zeros(*x.size(), self.d_model, device=x.device)
+            ctx = context[:, :self.ctx_len]
+        else:
+            ctx = self.pca(context)
         x = self.embedding(x, segment, ctx=ctx)
 
         for block in self.bert_blocks:
             x = block(x, mask)
 
         # use attention to update context vector
-        with torch.no_grad():
-            att_weight = x @ context.transpose(1, 2)
-            att_weight = torch.softmax(att_weight, dim=1)
-            context = att_weight @ x
-        return x, context
+        att_weight = x @ context.transpose(1, 2)
+        att_weight = torch.softmax(att_weight, dim=1)
+        context = att_weight @ x
+
+        # get logits
+        logits = self.linear(x)
+        logits = torch.softmax(logits, dim=-1)
+        return x, context, logits
 
     def save(self, path: str):
         assert not os.path.isfile(path), 'Path must be a directory'
