@@ -23,7 +23,7 @@ class BertDataset(Dataset):
         self.ctx_len = ctx_len
         self.seq_len = max_len - ctx_len - 3
         self.offset = self.ctx_len + 3
-        self.vocab = vocab if vocab is not None else \
+        self.vocab = self.load_vocab(vocab) if vocab is not None else \
             torchtext.vocab.vocab({}, specials=['<PAD>', '<MASK>', '<CLS>', '<SEP>', '<UNK>'])
         self.load_data(path)
 
@@ -36,6 +36,20 @@ class BertDataset(Dataset):
             words.update(sentence)
         for word in words:
             self.vocab.append_token(word)
+
+    def load_vocab(self, path):
+        with open(path, 'r', encoding='utf-8') as f:
+            words = f.readlines()
+        self.vocab = torchtext.vocab.vocab({})
+        for word in words:
+            self.vocab.append_token(word)
+
+    def save_vocab(self, path):
+        words = self.vocab.get_stoi().items()
+        words = sorted(words, key=lambda x: x[1])
+        words = [word[0] for word in words]
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(words))
 
     def __len__(self):
         return len(self.data)

@@ -96,14 +96,15 @@ class Bert(nn.Module):
         logits = torch.softmax(logits, dim=-1)
         return x, context, logits
 
-    def save(self, path: str):
+    def save(self, path: str, name='bert.pth'):
         assert not os.path.isfile(path), 'Path must be a directory'
-        assert path.find('.') == -1, 'Path must be a directory'
 
         if not os.path.exists(path):
             os.makedirs(path)
-        path = os.path.join(path, 'bert.pth')
-        torch.save(self.state_dict(), path)
+        path = os.path.join(path, name)
+
+        model = self.cpu()
+        torch.save(model.state_dict(), path)
 
     def load(self, path: str):
         path = os.path.join(path, 'bert.pth')
