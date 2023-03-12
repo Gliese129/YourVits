@@ -17,15 +17,16 @@ tokenizer = {
 
 
 class BertDataset(Dataset):
-    def __init__(self, path, max_len, ctx_len=1, vocab=None):
+    def __init__(self, path, max_len, ctx_len=1, cut_part=1, vocab=None):
         self.data = None
         self.max_len = max_len
         self.ctx_len = ctx_len
         self.seq_len = max_len - ctx_len - 3
         self.offset = self.ctx_len + 3
         self.vocab = self.load_vocab(vocab) if vocab is not None else \
-            torchtext.vocab.vocab({}, specials=['<PAD>', '<MASK>', '<CLS>', '<SEP>', '<UNK>'])
+            torchtext.vocab.vocab({}, specials=['<PAD>', '<MASK>', '<CLS>', '<SEP>', '<UNK>', '<CTX>'])
         self.load_data(path)
+        self.cut_part = cut_part
 
     def load_data(self, path):
         with open(path, 'r', encoding='utf-8') as f:
@@ -82,17 +83,17 @@ class BertDataset(Dataset):
             for i in range(part)
         ]
 
-    def __getitem__(self, idx, part=1):
+    def __getitem__(self, idx):
         to_idxes = lambda x: [self.vocab.get_stoi()[w] for w in x]
 
         text = self.data[idx]
         text = self.vocab(text)
-        text = self.cut(text, part=part)
+        text = self.cut(text, part=self.cut_part)
 
         origin = torch.tensor(text, dtype=torch.long)
         masked, pos = self.mask(origin)
 
-        prefix = to_idxes(['<CLS>', '<SEP>'] + ['<PAD>'] * self.ctx_len + ['<SEP>'])
+        prefix = to_idxes(['<CLS>', '<SEP>'] + ['<CTX>'] * self.ctx_len + ['<SEP>'])
         prefix = torch.tensor(prefix, dtype=torch.long).unsqueeze(0)
         prefix = torch.repeat_interleave(prefix, origin.size(0), dim=0)
 
